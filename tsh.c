@@ -337,13 +337,10 @@ void sigint_handler(int sig)
     pid_t pToKill = fgpid(jobs);
     struct job_t *job = getjobpid(jobs, pToKill);
 
-    if (pToKill > 0) {
-        if (kill(pToKill, sig) < 0) {
-            printf("Kill Error");
-        } else {
-            printf("Job [%d] (%d) terminated by signal %d\n", job->jid, job->pid, sig);
-            deletejob(jobs, pToKill);
-        }
+    if (pToKill != 0) {
+        kill(-pToKill, sig);
+        printf("Job [%d] (%d) terminated by signal %d\n", job->jid, job->pid, sig);
+        deletejob(jobs, pToKill);
     }
     
     return;
@@ -359,13 +356,10 @@ void sigtstp_handler(int sig)
     pid_t pToStop = fgpid(jobs);
     struct job_t *job = getjobpid(jobs, pToStop);
 
-    if (pToStop > 0) {
-        if (kill(pToStop, sig) < 0) {
-            printf("Stop Error!");
-        } else {
-            printf("Job [%d] (%d) terminated by signal %d\n", job->jid, job->pid, sig);
-            job->state = ST;
-        }
+    if (pToStop != 0) {
+        kill(-pToStop, sig);
+        printf("Job [%d] (%d) terminated by signal %d\n", job->jid, job->pid, sig);
+        job->state = ST;
     }
 
     return;
