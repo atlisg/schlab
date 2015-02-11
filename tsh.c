@@ -270,7 +270,7 @@ int builtin_cmd(char **argv)
     if (strcmp(argv[0], "quit") == 0) {
 	exit(0);
     } else if (strcmp(argv[0], "jobs") == 0) {
-	printf("handle jobs");
+	listjobs(jobs); 
 	return 1;
     } else if (strcmp(argv[0], "bg") == 0) {
 	printf("handle bg");
