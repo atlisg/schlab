@@ -270,7 +270,7 @@ int builtin_cmd(char **argv)
     if (strcmp(argv[0], "quit") == 0) {
 	exit(0);
     } else if (strcmp(argv[0], "jobs") == 0) {
-	listjobs(jobs); 
+	listjobs(jobs);
 	return 1;
     } else if (strcmp(argv[0], "bg") == 0) {
 	printf("handle bg");
@@ -334,6 +334,18 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig) 
 {
+    pid_t pToKill = fgpid(jobs);
+    struct job_t *job = getjobpid(jobs, pToKill);
+
+    if (pToKill > 0) {
+        if (kill(pToKill, sig) < 0) {
+            printf("Kill Error");
+        } else {
+            printf("Job [%d] (%d) terminated by signal %d\n", job->jid, job->pid, sig);
+            deletejob(jobs, pToKill);
+        }
+    }
+    
     return;
 }
 
