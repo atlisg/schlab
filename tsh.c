@@ -298,26 +298,36 @@ int builtin_cmd(char **argv)
  */
 void do_bgfg(char **argv) 
 {
-    int size = sizeof(argv)/sizeof(argv[0]);
-    if (size == 1) {
-        printf("%s command requires PID or %%jobid\n", argv[0]);
+    if (argv[1] == NULL) {
+        printf("%s command requires PID or %%jobid argument\n", argv[0]);
         return;
     }
+
     struct job_t *job;
     if (argv[1][0] == '%') {
         int iID;
         sscanf(argv[1], "%%%d", &iID);
         if (iID == 0) {
-            printf("%s, argument must be a PID or %%jobid\n", argv[0]);
+            printf("%s: argument must be a PID or %%jobid\n", argv[0]);
+            return;
         }
         job = getjobjid(jobs, iID);
+        if (job == NULL) {
+            printf("%%%d: No such job\n", iID);
+            return;
+        }
     } else {
         pid_t pid;
         sscanf(argv[1], "%d", &pid);
         if (pid == 0) {
-            printf("%s, argument must be a PID or %%jobid\n", argv[0]);
+            printf("%s: argument must be a PID or %%jobid\n", argv[0]);
+            return;
         }
         job = getjobpid(jobs, pid);
+        if (job == NULL) {
+            printf("(%d): No such process\n", pid);
+            return;
+        }
     }
 
     if (strcmp(argv[0], "bg") == 0) {
