@@ -177,13 +177,22 @@ void eval(char *cmdline)
     char *argv[MAXARGS];
     pid_t pid;
     struct job_t *job;
+    sigset_t mask;
     int bg = parseline(cmdline, argv);
+
     if (!builtin_cmd(argv)) {
+        sigemptyset(&mask);
+        sigaddset(&mask, SIGCHLD);
+        sigprocmask(SIG_BLOCK, &mask, NULL); /* Block SIGCHLD */
+        /* Child Process */
         if ((pid = fork()) == 0) {
+            setpgid(0, 0);
+            sigprocmask(SIG_UNBLOCK, &mask, NULL); /* Unblock child */
             execvp(argv[0], argv);
             printf("%s: Command not found\n", argv[0]);
             exit(0);
         }
+        /* Parent Process */
         int BF;
         if (bg) {
             BF = BG;
@@ -191,6 +200,7 @@ void eval(char *cmdline)
             BF = FG;
         }
         addjob(jobs, pid, BF, cmdline);
+        sigprocmask(SIG_UNBLOCK, &mask, NULL); /* Unblock parent */
         if (!bg) {
             waitfg(pid);
         } else {
@@ -321,7 +331,7 @@ void sigchld_handler(int sig)
 {
     pid_t pid;
     int status;
-    while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+    if ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
         deletejob(jobs, pid);
     }
     return;
@@ -338,11 +348,16 @@ void sigint_handler(int sig)
     struct job_t *job = getjobpid(jobs, pToKill);
 
     if (pToKill != 0) {
-        kill(-pToKill, sig);
-        printf("Job [%d] (%d) terminated by signal %d\n", job->jid, job->pid, sig);
-        deletejob(jobs, pToKill);
+        if (kill(-pToKill, sig) >= 0) {
+            printf("Job [%d] (%d) terminated by signal %d\n", job->jid, job->pid, sig);
+            deletejob(jobs, pToKill);
+        } else {
+            printf("Kill Error\n");
+        }
+    } else {
+        printf("No Foreground Job\n");
     }
-    
+        
     return;
 }
 
@@ -357,11 +372,14 @@ void sigtstp_handler(int sig)
     struct job_t *job = getjobpid(jobs, pToStop);
 
     if (pToStop != 0) {
-        kill(-pToStop, sig);
-        printf("Job [%d] (%d) terminated by signal %d\n", job->jid, job->pid, sig);
-        job->state = ST;
+        if (kill(-pToStop, sig) == 0) {
+            printf("Job [%d] (%d) terminated by signal %d\n", job->jid, job->pid, sig);
+            job->state = ST;
+        } else printf("Stop Error\n");
+    } else {
+        printf("No Foreground Job\n");
     }
-
+    
     return;
 }
 
