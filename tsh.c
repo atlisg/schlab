@@ -373,7 +373,7 @@ void sigtstp_handler(int sig)
 
     if (pToStop != 0) {
         if (kill(-pToStop, sig) == 0) {
-            printf("Job [%d] (%d) terminated by signal %d\n", job->jid, job->pid, sig);
+            printf("Job [%d] (%d) stopped by signal %d\n", job->jid, job->pid, sig);
             job->state = ST;
         } else printf("Stop Error\n");
     } else {
