@@ -282,11 +282,8 @@ int builtin_cmd(char **argv)
     } else if (strcmp(argv[0], "jobs") == 0) {
 	listjobs(jobs);
 	return 1;
-    } else if (strcmp(argv[0], "bg") == 0) {
-	printf("handle bg");
-	return 1;
-    } else if (strcmp(argv[0], "fg") == 0) {
-	printf("handle fg");
+    } else if (strcmp(argv[0], "bg") == 0 || strcmp(argv[0], "fg") == 0 ) {
+	do_bgfg(argv);
 	return 1;
     } else if (strcmp(argv[0], "kill") == 0) {
 	printf("handle kill");
@@ -301,6 +298,28 @@ int builtin_cmd(char **argv)
  */
 void do_bgfg(char **argv) 
 {
+    struct job_t *job;
+
+    if (argv[1][0] == '%') {
+        int iID;
+        sscanf(argv[1], "%%%d", &iID);
+        job = getjobjid(jobs, iID);
+    } else {
+        pid_t pid;
+        sscanf(argv[1], "%d", &pid);
+        job = getjobpid(jobs, pid);
+    }
+
+    if (strcmp(argv[0], "bg") == 0) {
+        if (job->state == ST) {
+            job->state = BG;
+            kill(-job->pid, SIGCONT);
+            printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
+        }
+    } else if (strcmp(argv[0], "fg") == 0) {
+        job->state = FG;
+        kill(-job->pid, SIGCONT);
+    }
     return;
 }
 
