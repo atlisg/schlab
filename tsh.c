@@ -298,21 +298,32 @@ int builtin_cmd(char **argv)
  */
 void do_bgfg(char **argv) 
 {
+    int size = sizeof(argv)/sizeof(argv[0]);
+    if (size == 1) {
+        printf("%s command requires PID or %%jobid\n", argv[0]);
+        return;
+    }
     struct job_t *job;
-
     if (argv[1][0] == '%') {
         int iID;
         sscanf(argv[1], "%%%d", &iID);
+        if (iID == 0) {
+            printf("%s, argument must be a PID or %%jobid\n", argv[0]);
+        }
         job = getjobjid(jobs, iID);
     } else {
         pid_t pid;
         sscanf(argv[1], "%d", &pid);
+        if (pid == 0) {
+            printf("%s, argument must be a PID or %%jobid\n", argv[0]);
+        }
         job = getjobpid(jobs, pid);
     }
 
     if (strcmp(argv[0], "bg") == 0) {
         if (job->state == ST) {
             job->state = BG;
+            // TODO, adda if doti sem athugar hvort killid virkadi.
             kill(-job->pid, SIGCONT);
             printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
         }
