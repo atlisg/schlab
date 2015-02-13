@@ -174,16 +174,16 @@ int main(int argc, char **argv)
  */
 void eval(char *cmdline) 
 {
-    // doing nothing if cmdline is empty.
-    if (cmdline == NULL) {
-        return;
-    }
-
     char *argv[MAXARGS];
     pid_t pid;
     struct job_t *job;
     sigset_t mask;
     int bg = parseline(cmdline, argv);
+
+    // doing nothing if cmdline is empty.
+    if (argv[0] == NULL) {
+        return;
+    }
 
     if (!builtin_cmd(argv)) {
         sigemptyset(&mask);
@@ -338,13 +338,18 @@ void do_bgfg(char **argv)
     if (strcmp(argv[0], "bg") == 0) {
         if (job->state == ST) {
             job->state = BG;
-            // TODO, adda if doti sem athugar hvort killid virkadi.
-            kill(-job->pid, SIGCONT);
+            if (kill(-job->pid, SIGCONT) < 0) {
+                printf("Kill error\n");
+                return;
+            }
             printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
         }
     } else if (strcmp(argv[0], "fg") == 0) {
         job->state = FG;
-        kill(-job->pid, SIGCONT);
+        if (kill(-job->pid, SIGCONT) < 0) {
+            printf("Kill error\n");
+            return;
+        }
         waitfg(job->pid);
     }
     return;
