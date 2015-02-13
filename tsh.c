@@ -174,6 +174,11 @@ int main(int argc, char **argv)
  */
 void eval(char *cmdline) 
 {
+    // doing nothing if cmdline is empty.
+    if (cmdline == NULL) {
+        return;
+    }
+
     char *argv[MAXARGS];
     pid_t pid;
     struct job_t *job;
@@ -413,7 +418,7 @@ void sigtstp_handler(int sig)
     struct job_t *job = getjobpid(jobs, pToStop);
 
     if (pToStop != 0) {
-        if (kill(-pToStop, sig) == 0) {
+        if (kill(-pToStop, sig) >= 0) {
             printf("Job [%d] (%d) stopped by signal %d\n", job->jid, job->pid, sig);
             job->state = ST;
         } else printf("Stop Error\n");
