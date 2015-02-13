@@ -384,15 +384,21 @@ void sigchld_handler(int sig)
     int status;
     sigset_t mask;
     while ((pid = waitpid(fgpid(jobs), &status, WNOHANG|WUNTRACED)) > 0) {
+        struct job_t *job = getjobpid(jobs, pid);
         sigemptyset(&mask);
         sigaddset(&mask, SIGCHLD);
-        sigprocmask(SIG_BLOCK, &mask, NULL);
-        if (WIFSTOPPED(status)) {
-            sigtstp_handler(20);
-        } else if (WIFSIGNALED(status)) {
-            printf("About to terminate the beach\n");
-            sigint_handler(2);
+        if (WIFSTOPPED(status)) { // Checking if stopped by another process
+            kill(-pid, SIGTSTP); 
+            printf("Job [%d] (%d) stopped by signal %d\n", job->jid, job->pid, sig);
+            job->state = ST;
+        } else if (WIFSIGNALED(status)) { // Checking if terminated by another process
+            kill(-pid, SIGINT);
+            printf("Job [%d] (%d) terminated by signal %d\n", job->jid, job->pid, sig);
+            sigprocmask(SIG_BLOCK, &mask, NULL);
+            deletejob(jobs, pid);
+            sigprocmask(SIG_UNBLOCK, &mask, NULL);
         } else if (WIFEXITED(status)) {
+            sigprocmask(SIG_BLOCK, &mask, NULL);
             deletejob(jobs, pid);
             sigprocmask(SIG_UNBLOCK, &mask, NULL);            
         }
