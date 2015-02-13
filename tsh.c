@@ -385,10 +385,10 @@ void sigchld_handler(int sig)
         sigemptyset(&mask); // Creating the mask to block SIGCHLD (we block during deletejob function calls)
         sigaddset(&mask, SIGCHLD);
         if (WIFSTOPPED(status)) { // Checking if stopped by another process
-            kill(-pid, SIGTSTP); 
+            printf("Job [%d] (%d) stopped by signal %d\n", job->jid, job->pid, SIGTSTP);
             job->state = ST;
         } else if (WIFSIGNALED(status)) { // Checking if terminated by another process
-            kill(-pid, SIGINT);
+            printf("Job [%d] (%d) terminated by signal %d\n", job->jid, job->pid, SIGINT);
             sigprocmask(SIG_BLOCK, &mask, NULL);
             deletejob(jobs, pid);
             sigprocmask(SIG_UNBLOCK, &mask, NULL);
@@ -410,12 +410,9 @@ void sigchld_handler(int sig)
 void sigint_handler(int sig) 
 {
     pid_t pToKill = fgpid(jobs);
-    struct job_t *job = getjobpid(jobs, pToKill);
 
     if (pToKill != 0) {
-        if (kill(-pToKill, sig) >= 0) { // Terminating the process and printing out descriptive message
-            printf("Job [%d] (%d) terminated by signal %d\n", job->jid, job->pid, sig);
-        } else {
+        if (kill(-pToKill, sig) < 0) { // Terminating the process and printing out descriptive message
             printf("Kill Error\n");
             return;
         }
@@ -434,14 +431,12 @@ void sigint_handler(int sig)
 void sigtstp_handler(int sig) 
 {
     pid_t pToStop = fgpid(jobs);
-    struct job_t *job = getjobpid(jobs, pToStop);
 
     if (pToStop != 0) {
-        if (kill(-pToStop, sig) >= 0) { // Stopping the process and printing out descriptive message
-            printf("Job [%d] (%d) stopped by signal %d\n", job->jid, job->pid, sig);
-        } else {
+        if (kill(-pToStop, sig) < 0) { // Stopping the process and printing out descriptive message
             printf("Stop Error\n");
             return;
+        }
     } else {
         printf("No Foreground Job\n");
     }
