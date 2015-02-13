@@ -341,7 +341,7 @@ void do_bgfg(char **argv)
             }
             printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
         }
-    } else if (strcmp(argv[0], "fg") == 0) { // Resuming stopped process in the forground
+    } else if (strcmp(argv[0], "fg") == 0) { // Resuming stopped process in the foreground
         job->state = FG;
         if (kill(-job->pid, SIGCONT) < 0) {
             printf("Kill error\n");
