@@ -290,8 +290,7 @@ int builtin_cmd(char **argv)
     } else if (strcmp(argv[0], "bg") == 0 || strcmp(argv[0], "fg") == 0 ) {
 	do_bgfg(argv);
 	return 1;
-    } else if (strcmp(argv[0], "kill") == 0) {
-	printf("handle kill");
+    } else if (strcmp(argv[0], "&") == 0) {
 	return 1;
     }
 
