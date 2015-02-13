@@ -382,9 +382,22 @@ void sigchld_handler(int sig)
 {
     pid_t pid;
     int status;
-    if ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
-        deletejob(jobs, pid);
+    sigset_t mask;
+    while ((pid = waitpid(fgpid(jobs), &status, WNOHANG|WUNTRACED)) > 0) {
+        sigemptyset(&mask);
+        sigaddset(&mask, SIGCHLD);
+        sigprocmask(SIG_BLOCK, &mask, NULL);
+        if (WIFSTOPPED(status)) {
+            sigtstp_handler(20);
+        } else if (WIFSIGNALED(status)) {
+            printf("About to terminate the beach\n");
+            sigint_handler(2);
+        } else if (WIFEXITED(status)) {
+            deletejob(jobs, pid);
+            sigprocmask(SIG_UNBLOCK, &mask, NULL);            
+        }
     }
+
     return;
 }
 
@@ -397,6 +410,7 @@ void sigint_handler(int sig)
 {
     pid_t pToKill = fgpid(jobs);
     struct job_t *job = getjobpid(jobs, pToKill);
+    printf("pToKill: %d, sig: %d\n", pToKill, sig);
 
     if (pToKill != 0) {
         if (kill(-pToKill, sig) >= 0) {
@@ -404,6 +418,7 @@ void sigint_handler(int sig)
             deletejob(jobs, pToKill);
         } else {
             printf("Kill Error\n");
+            return;
         }
     } else {
         printf("No Foreground Job\n");
