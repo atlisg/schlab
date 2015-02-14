@@ -186,17 +186,17 @@ void eval(char *cmdline)
     }
 
     if (!builtin_cmd(argv)) {
-        sigemptyset(&mask);
-        sigaddset(&mask, SIGCHLD);
-        sigprocmask(SIG_BLOCK, &mask, NULL); // Block SIGCHLD
+        if (sigemptyset(&mask) == -1) unix_error("Creating empty failed");
+        if (sigaddset(&mask, SIGCHLD) == -1) unix_error("Adding set failed"); 
+        if (sigprocmask(SIG_BLOCK, &mask, NULL) == -1) unix_error("Blocking failed"); // Block SIGCHLD
         // Child Process
         if ((pid = fork()) == 0) {
-            setpgid(0, 0);
-            sigprocmask(SIG_UNBLOCK, &mask, NULL); // Unblock child
+            if (setpgid(0, 0) == -1) unix_error("Setting process group ID failed");
+            if (sigprocmask(SIG_UNBLOCK, &mask, NULL) == -1) unix_error("Unblocking failed"); // Unblock child
             execvp(argv[0], argv); // Child executing the command
             printf("%s: Command not found\n", argv[0]);
             exit(0);
-        }
+        } else if (pid == -1) unix_error("Forking failed");
         // Parent Process
         int BF;
         if (bg) {
@@ -205,7 +205,7 @@ void eval(char *cmdline)
             BF = FG;
         }
         addjob(jobs, pid, BF, cmdline); // Adding job to the jobs array
-        sigprocmask(SIG_UNBLOCK, &mask, NULL); // Unblock parent
+        if (sigprocmask(SIG_UNBLOCK, &mask, NULL) == -1) unix_error("Unblocking failed"); // Unblock parent
         if (!bg) { // If running in foreground, wait for the child to finish.
             waitfg(pid);
         } else { // If running in background, print out descriptive message.
@@ -336,7 +336,7 @@ void do_bgfg(char **argv)
         if (job->state == ST) { // Resuming stopped process in the background
             job->state = BG;
             if (kill(-job->pid, SIGCONT) < 0) {
-                printf("Kill error\n");
+                unix_error("Kill error");
                 return;
             }
             printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
@@ -344,7 +344,7 @@ void do_bgfg(char **argv)
     } else if (strcmp(argv[0], "fg") == 0) { // Resuming stopped process in the foreground
         job->state = FG;
         if (kill(-job->pid, SIGCONT) < 0) {
-            printf("Kill error\n");
+            unix_error("Kill error");
             return;
         }
         waitfg(job->pid); // Wait for the process to finish
@@ -382,20 +382,21 @@ void sigchld_handler(int sig)
     sigset_t mask;
     while ((pid = waitpid(fgpid(jobs), &status, WNOHANG|WUNTRACED)) > 0) {
         struct job_t *job = getjobpid(jobs, pid);
-        sigemptyset(&mask); // Creating the mask to block SIGCHLD (we block during deletejob function calls)
-        sigaddset(&mask, SIGCHLD);
+        // Creating the mask to block SIGCHLD (we block during deletejob function calls)
+        if (sigemptyset(&mask) == -1) unix_error("Creating empty set failed");        
+        if (sigaddset(&mask, SIGCHLD) == -1) unix_error("Adding set failed"); 
         if (WIFSTOPPED(status)) { // Checking if stopped by another process
             printf("Job [%d] (%d) stopped by signal %d\n", job->jid, job->pid, SIGTSTP);
             job->state = ST;
         } else if (WIFSIGNALED(status)) { // Checking if terminated by another process
             printf("Job [%d] (%d) terminated by signal %d\n", job->jid, job->pid, SIGINT);
-            sigprocmask(SIG_BLOCK, &mask, NULL);
+            if (sigprocmask(SIG_BLOCK, &mask, NULL) == -1) unix_error("Blocking failed"); 
             deletejob(jobs, pid);
-            sigprocmask(SIG_UNBLOCK, &mask, NULL);
+            if (sigprocmask(SIG_UNBLOCK, &mask, NULL) == -1) unix_error("Unblocking failed"); 
         } else if (WIFEXITED(status)) { // Reaping
-            sigprocmask(SIG_BLOCK, &mask, NULL);
+            if (sigprocmask(SIG_BLOCK, &mask, NULL) == -1) unix_error("Blocking failed"); 
             deletejob(jobs, pid);
-            sigprocmask(SIG_UNBLOCK, &mask, NULL);            
+            if (sigprocmask(SIG_UNBLOCK, &mask, NULL) == -1) unix_error("Unblocking failed"); 
         }
     }
 
@@ -413,7 +414,7 @@ void sigint_handler(int sig)
 
     if (pToKill != 0) {
         if (kill(-pToKill, sig) < 0) { // Terminating the process and printing out descriptive message
-            printf("Kill Error\n");
+            unix_error("Kill Error");
             return;
         }
     } else {
@@ -434,7 +435,7 @@ void sigtstp_handler(int sig)
 
     if (pToStop != 0) {
         if (kill(-pToStop, sig) < 0) { // Stopping the process and printing out descriptive message
-            printf("Stop Error\n");
+            unix_error("Stop Error");
             return;
         }
     } else {
