@@ -336,7 +336,7 @@ void do_bgfg(char **argv)
         if (job->state == ST) { // Resuming stopped process in the background
             job->state = BG;
             if (kill(-job->pid, SIGCONT) < 0) {
-                unix_error("Kill error");
+                unix_error("Killing failed. Just couldn't do it");
                 return;
             }
             printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
@@ -344,7 +344,7 @@ void do_bgfg(char **argv)
     } else if (strcmp(argv[0], "fg") == 0) { // Resuming stopped process in the foreground
         job->state = FG;
         if (kill(-job->pid, SIGCONT) < 0) {
-            unix_error("Kill error");
+            unix_error("Killing failed. Didn't have the heart");
             return;
         }
         waitfg(job->pid); // Wait for the process to finish
@@ -414,7 +414,7 @@ void sigint_handler(int sig)
 
     if (pToKill != 0) {
         if (kill(-pToKill, sig) < 0) { // Terminating the process and printing out descriptive message
-            unix_error("Kill Error");
+            unix_error("Killing failed");
             return;
         }
     } else {
@@ -435,7 +435,7 @@ void sigtstp_handler(int sig)
 
     if (pToStop != 0) {
         if (kill(-pToStop, sig) < 0) { // Stopping the process and printing out descriptive message
-            unix_error("Stop Error");
+            unix_error("Stopping failed");
             return;
         }
     } else {
